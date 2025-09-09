@@ -1,0 +1,141 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Datos Personales</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Datos Personales</h1>
+        <form onsubmit="return validateForm();">
+            <label for="nombre">Nombre:</label>
+            <input type="text" id="nombre" name="nombre" pattern="^[A-Za-z]+(\s[A-Za-z]+)*$" maxlength="50" title="Solo letras y espacios, debe empezar con una letra, máximo 50 caracteres">
+
+            <label for="apellido">Apellido:</label>
+            <input type="text" id="apellido" name="apellido" pattern="^[A-Za-z]+(\s[A-Za-z]+)*$" maxlength="50" title="Solo letras y espacios, debe empezar con una letra, máximo 50 caracteres">
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email">
+
+            <label for="fecha_nacimiento">Fecha de Nacimiento:</label>
+            <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" min="1900-01-01" max="2025-12-31">
+
+            <label for="pais">País de Residencia:</label>
+            <select id="pais" name="pais">
+                <option value="" disabled selected>Selecciona un país</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Brasil">Brasil</option>
+                <option value="Chile">Chile</option>
+                <option value="Colombia">Colombia</option>
+                <option value="México">México</option>
+                <option value="Otros">Otros</option>
+            </select>
+
+            <div>
+                <input type="submit" value="Enviar">
+                <input type="button" value="Contraste Normal" onclick="document.body.classList.remove('high-contrast')">
+                <input type="button" value="Contraste Alto" onclick="document.body.classList.add('high-contrast')">
+            </div>
+            <div id="error-messages"></div>
+        </form>
+    </div>
+    <script>
+        function validateForm() {
+            var errors = [];
+            var nombre = document.getElementById("nombre").value;
+            if (!nombre) {
+                errors.push("El campo Nombre es obligatorio.");
+            } else if (!/^[A-Za-z]+(\s[A-Za-z]+)*$/.test(nombre) || nombre.length > 50) {
+                errors.push("El Nombre solo puede contener letras y espacios, debe empezar con una letra y tener máximo 50 caracteres.");
+            }
+
+            var apellido = document.getElementById("apellido").value;
+            if (!apellido) {
+                errors.push("El campo Apellido es obligatorio.");
+            } else if (!/^[A-Za-z]+(\s[A-Za-z]+)*$/.test(apellido) || apellido.length > 50) {
+                errors.push("El Apellido solo puede contener letras y espacios, debe empezar con una letra y tener máximo 50 caracteres.");
+            }
+
+            var email = document.getElementById("email").value;
+            if (!email) {
+                errors.push("El campo Email es obligatorio.");
+            } else if (!/\S+@\S+\.\S+/.test(email)) {
+                errors.push("El Email no tiene un formato válido.");
+            }
+
+            var fecha = document.getElementById("fecha_nacimiento").value;
+            if (!fecha) {
+                errors.push("La Fecha de Nacimiento es obligatoria.");
+            } else {
+                var date = new Date(fecha);
+                var minDate = new Date("1900-01-01");
+                var maxDate = new Date("2025-12-31");
+                if (date < minDate || date > maxDate) {
+                    errors.push("La Fecha de Nacimiento debe estar entre 1900-01-01 y 2025-12-31.");
+                }
+            }
+
+            var pais = document.getElementById("pais").value;
+            if (!pais) {
+                errors.push("Debe seleccionar un País de Residencia.");
+            }
+
+            var errorDiv = document.getElementById("error-messages");
+            errorDiv.innerHTML = "";
+            if (errors.length > 0) {
+                errors.forEach(function(err) {
+                    var p = document.createElement("p");
+                    p.textContent = err;
+                    p.style.color = "red";
+                    errorDiv.appendChild(p);
+                });
+                return false;
+            } else {
+                alert("Formulario enviado");
+                return false;
+            }
+        }
+    </script>
+</body>
+</html>
